@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import sounddevice as sd
 import soundfile as sf
-import time
+
 
 # Umbralización de LP a partir de extracelular, PD a partir de intrcelular. Calcular los intervalos en cada ciclo, realizar regresiones,
 # y definir los diferentes modos de sonificación
@@ -39,11 +39,11 @@ parser.add_argument('--sonification_type',
 parser.add_argument('--sonification_version',
                     type=int,
                     default=0,
-                    help='0 para invarincia global, 1 invariancia local')                    
-parser.add_argument('--times_sigma',
+                    help='0 para variabilidad, 1 invariantes dinámicos')                    
+parser.add_argument('--S',
                     type=int,
-                    default=1,
-                    help='A partir de cuántas veces la desviación típica sonificamos para el caso 2')
+                    default=4,
+                    help='Frontera de decisión para sonification_type == 2 y sonification_version == 1')
 parser.add_argument('--interval',
                     type=int,
                     default=0,
@@ -92,13 +92,13 @@ if args.interval not in [0,1,2,3,4,5]:
 if args.sonification_version not in [0,1]:
     args.sonification_version = 0
     print('No se ha dado una versión válida, se toma 0')
+
 #Cargamos el registro seleccionado y guardamos las señales necesarias.
 datos = np.loadtxt(args.file_path, dtype='f')
 PD = datos[:,3]
 PD = PD - PD.mean()
 senal = datos[:,2]
 senalIntra = datos[:,4]
-#senal= senal - senal.mean()
 t=(datos[:,0]-datos[0,0])/1000
 t = np.linspace(t[0], t[-1], num=t.size)
 print('Carga de datos completada')
@@ -289,12 +289,12 @@ PDLP_delay_std = (PDLP_delay_s-periodo_s*reg_PDLP_delay.coef_).std()
 BDLP_std = (BDLP_s-periodo_s*reg_BDLP.coef_).std()
 BDPD_std = (BDPD_s-periodo_s*reg_BDPD.coef_).std()
 
-LPPD_inter_coef = LPPD_inter_std/abs(LPPD_inter_s.mean())*100
-LPPD_delay_coef = LPPD_delay_std/abs(LPPD_delay_s.mean())*100
-PDLP_inter_coef = PDLP_inter_std/abs(PDLP_inter_s.mean())*100
-PDLP_delay_coef = PDLP_delay_std/abs(PDLP_delay_s.mean())*100
-BDLP_coef = BDLP_std/abs(BDLP_s.mean())*100
-BDPD_coef = BDPD_std/abs(BDPD_s.mean())*100
+LPPD_inter_coef = LPPD_inter_s.std()/abs(LPPD_inter_s.mean())*100
+LPPD_delay_coef = LPPD_delay_s.std()/abs(LPPD_delay_s.mean())*100
+PDLP_inter_coef = PDLP_inter_s.std()/abs(PDLP_inter_s.mean())*100
+PDLP_delay_coef = PDLP_delay_s.std()/abs(PDLP_delay_s.mean())*100
+BDLP_coef = BDLP_s.std()/abs(BDLP_s.mean())*100
+BDPD_coef = BDPD_s.std()/abs(BDPD_s.mean())*100
 
 print('LPPD interval coef =', LPPD_inter_coef)
 print('LPPD delay coef =', LPPD_delay_coef)
@@ -316,20 +316,21 @@ plt.show(block = False)
 '''
 
 # Mostramos los intervalos y la regresión lineal calculada, con los márgenes elegidos según x * sigma
+times_sigma = 1
 if args.show_intervals:
     plt.figure(11)
 
     plt.plot(periodo_s, LPPD_inter_s,'x', color='red', label = 'LPPD interval')
 
-    plt.plot(periodo_s, linea_LPPD_inter+LPPD_inter_std*args.times_sigma, color='gray')
+    plt.plot(periodo_s, linea_LPPD_inter+LPPD_inter_std*times_sigma, color='gray')
     plt.plot(periodo_s, linea_LPPD_inter, color='red', label = 'Regresión lineal LPPD interval')
-    plt.plot(periodo_s, linea_LPPD_inter-LPPD_inter_std*args.times_sigma, color='gray')
+    plt.plot(periodo_s, linea_LPPD_inter-LPPD_inter_std*times_sigma, color='gray')
 
     plt.plot(periodo_s, LPPD_delay_s,'o', color='black', label = 'LPPD delay')
 
-    plt.plot(periodo_s, linea_LPPD_delay+LPPD_delay_std*args.times_sigma, color='gray')
+    plt.plot(periodo_s, linea_LPPD_delay+LPPD_delay_std*times_sigma, color='gray')
     plt.plot(periodo_s, linea_LPPD_delay, color='black', label = 'Regresión lineal LPPD delay')
-    plt.plot(periodo_s, linea_LPPD_delay-LPPD_delay_std*args.times_sigma, color='gray', label = 'Desviación típica')
+    plt.plot(periodo_s, linea_LPPD_delay-LPPD_delay_std*times_sigma, color='gray', label = 'Desviación típica')
 
     plt.legend(fontsize=20)
     plt.ylabel('Tiempo (s)', fontsize=20)
@@ -374,37 +375,50 @@ if args.interval == 1:
     intervalo_s = LPPD_delay_s
     intervalo = LPPD_delay
     coef = LPPD_delay_coef
+    pend = reg_LPPD_delay.coef_
 elif args.interval == 2:
     linea = linea_PDLP_inter
     std = PDLP_inter_std
     intervalo_s = PDLP_inter_s
     intervalo = PDLP_inter  
     coef = PDLP_inter_coef  
+    pend = reg_PDLP_inter.coef_
 elif args.interval == 3:
     linea = linea_PDLP_delay
     std = PDLP_delay_std
     intervalo_s = PDLP_delay_s
     intervalo = PDLP_delay
     coef = PDLP_delay_coef 
+    pend = reg_PDLP_delay.coef_
 elif args.interval == 4:
     linea = linea_BDLP
     std = BDLP_std
     intervalo_s = BDLP_s
     intervalo = BDLP
     coef = BDLP_coef
+    pend = reg_BDLP.coef_
 elif args.interval == 5:
     linea = linea_BDPD
     std = BDPD_std
     intervalo_s = BDPD_s
     intervalo = BDPD
     coef = BDPD_coef
+    pend = reg_BDPD.coef_
 else: 
     linea = linea_LPPD_inter
     std = LPPD_inter_std
     intervalo_s = LPPD_inter_s
     intervalo = LPPD_inter
     coef = LPPD_inter_coef
+    pend = reg_LPPD_inter.coef_
 
+k = abs(pend)
+if k > 1:
+    k = (periodo_s[2]-periodo_s[1])/(linea[2]-linea[1])
+k1 = k - 1
+k1 = abs(k1)*4 + 1
+k2 = k *4 + 1
+k3 = k*3
 # Tres maneras de crear una señal sonora a partir de la varianza de los datos
 # Primera forma. Se modula un tono en frecuencia.
 if args.sonification_type == 0:
@@ -424,7 +438,7 @@ if args.sonification_type == 0:
         if args.sonification_version == 0:
             f_tono_2 = f_tono * (np.log2((np.abs(intervalo_s[i]-esperado)*np.square(coef))+1)+1)
         else:
-            f_tono_2 = f_tono * (np.log2((np.abs(intervalo_s[i]-esperado)/std)+1)+1)
+            f_tono_2 = f_tono * f_tono * k1 + 10 * np.log2((np.abs(intervalo_s[i]-esperado)/std)+1)
 
         if f_tono_2>5000:
             f_tono_2=5000
@@ -444,21 +458,25 @@ elif args.sonification_type == 1:
     t2 = t[:30000]
     tono_fuente=np.sin(2*np.pi*f_tono*t2)
     tono = np.zeros(np.shape(senal)[0])
+    amp2 = np.zeros(linea.size)
     for i in range(linea.size):
         dur = regionLP[i+1][0]-regionLP[i][0]    
         esperado=linea[i] 
         if args.sonification_version == 0:
             amp = np.abs(intervalo_s[i]-esperado)*np.square(coef)+1
         else:
-            amp = (np.abs(intervalo_s[i]-esperado)/std)+1
-
+            amp2[i] = np.abs(intervalo_s[i]-esperado)/(2*std)
+            amp = k2 + amp2[i]
         #print('Amplitud calculada =', amp)
         tono_temp = np.copy(tono_fuente[:int(dur)])
         tono_temp[-1001:]  = tono_temp[-1001:]*funcion_atenuante
         tono_temp[:1000]  = tono_temp[:1000]*funcion_atenuante_2
         tono_temp = tono_temp * amp
         tono[int(regionLP[i][0]):int(regionLP[i+1][0])] = tono_temp
-    tono = tono / tono.max()
+    if args.sonification_version == 0:
+        tono = tono = tono /tono.max()
+    else:
+        tono = tono /(5+ amp2.max())
    
 # Tercera forma. Creando un aviso sonoro en forma de tono.
 elif args.sonification_type == 2:
@@ -472,7 +490,7 @@ elif args.sonification_type == 2:
     if args.sonification_version == 0:
         criterio = np.abs((intervalo_s - linea) * coef )> 0.1
     else:
-        criterio = np.abs(intervalo_s - linea)  > std*args.times_sigma
+        criterio = k2 + np.abs(intervalo_s - linea)/std  > args.S
     #print(criterio)
     for i in range(linea.size):
         dur = periodo[i]
