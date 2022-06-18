@@ -296,13 +296,15 @@ PDLP_delay_coef = PDLP_delay_s.std()/abs(PDLP_delay_s.mean())*100
 BDLP_coef = BDLP_s.std()/abs(BDLP_s.mean())*100
 BDPD_coef = BDPD_s.std()/abs(BDPD_s.mean())*100
 
+# Coeficientes de variación
+'''
 print('LPPD interval coef =', LPPD_inter_coef)
 print('LPPD delay coef =', LPPD_delay_coef)
 print('PDLP interval coef =', PDLP_inter_coef)
 print('PDLP delay coef =', PDLP_delay_coef)
 print('BDLP coef =', BDLP_coef)
 print('BDPD coef =', BDPD_coef)
-
+'''
 # Mostramos los datos linealizados para comprobar que se ha realizado bien el proceso
 '''
 plt.figure(6)
@@ -412,13 +414,15 @@ else:
     coef = LPPD_inter_coef
     pend = reg_LPPD_inter.coef_
 
+# Cálculo de las diferentes k necesarias para la decisión de los invariantes
 k = abs(pend)
 if k > 1:
-    k = (periodo_s[2]-periodo_s[1])/(linea[2]-linea[1])
+    k = 1/k
 k1 = k - 1
 k1 = abs(k1)*4 + 1
 k2 = k *4 + 1
 k3 = k*3
+
 # Tres maneras de crear una señal sonora a partir de la varianza de los datos
 # Primera forma. Se modula un tono en frecuencia.
 if args.sonification_type == 0:
