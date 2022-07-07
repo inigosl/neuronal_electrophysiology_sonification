@@ -282,6 +282,16 @@ linea_BDLP = reg_BDLP.predict(periodo_s.reshape(-1,1))
 linea_BDPD = reg_BDPD.predict(periodo_s.reshape(-1,1))
 
 
+# Aquí se guardan las variables necesarias para crear el vídeo
+'''
+np.savetxt("periodo.txt", periodo)
+np.savetxt("regionLP.txt", regionLP)
+np.savetxt("regionPD.txt", regionPD)
+np.savetxt("intervalo.txt", LPPD_inter)
+np.savetxt('LP.txt', LPUmb)
+np.savetxt('PD.txt', PD)
+'''
+
 LPPD_inter_std = (LPPD_inter_s-periodo_s*reg_LPPD_inter.coef_).std()
 LPPD_delay_std = (LPPD_delay_s-periodo_s*reg_LPPD_delay.coef_).std()
 PDLP_inter_std = (PDLP_inter_s-periodo_s*reg_PDLP_inter.coef_).std()
